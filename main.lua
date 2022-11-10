@@ -20,10 +20,13 @@ end
 function love.draw()
 end
 
--- state represents in binary the choices to be made each turn
--- 1: sow from ruma
--- 0: sow from last sowed position
--- returns a winnable starting position
+--[[
+state represents in binary the choices to be made each turn
+if chaining is not enabled, every turn the bean is sowed from the ruma
+1: sow from ruma
+0: sow from last sowed position
+returns a winnable starting position
+--]]
 function generatePosition(numBins, state)
   local bins = {}
   bins[0] = 100000000000000 -- just a big number to represent infinite beans in the ruma
@@ -31,12 +34,11 @@ function generatePosition(numBins, state)
     bins[i] = 0
   end
 
-  local lastSowedPosition = 0
   local pos = 0
+  local lastSowedPosition = 0 -- only necessary for chaining
   while state > 0 do
-    if bit.band(state, 1) == 0 then
-      pos = 0
-    else
+    pos = 0
+    if chaining and bit.band(state, 1) == 1 then
       pos = lastSowedPosition
     end
     state = bit.rshift(state, 1) -- move to next position in decision tree
