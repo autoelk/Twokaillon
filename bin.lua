@@ -7,7 +7,7 @@ function Bin:Create(num)
   local newBin = {
     num = num,
     x = num * tileSize,
-    y = 100,
+    y = tileSize * 3,
     beans = {}
   }
   setmetatable(newBin, self)
