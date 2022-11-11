@@ -1,23 +1,30 @@
-function love.load(arg)
-  lg = love.graphics
-  lk = love.keyboard
-  lw = love.window
-  lm = love.mouse
+require 'bin'
+require 'bean'
 
+function love.load(arg)
+  math.randomseed(os.time())
   chaining = false
   wrapping = false
+
+  numBins = 5
+  tileSize = math.floor(math.min(love.graphics.getHeight(), love.graphics.getWidth()) / numBins)
+  love.graphics.setNewFont(tileSize / 4)
 
   setup()
 end
 
 function setup()
-  bins = generatePosition(5, 8)
+  bins = generatePosition(math.random(100))
 end
 
 function love.update(dt)
 end
 
 function love.draw()
+  love.graphics.setBackgroundColor(love.math.colorFromBytes(255, 255, 255))
+  for i,v in ipairs(bins) do
+    v:Draw()
+  end
 end
 
 --[[
@@ -27,10 +34,10 @@ if chaining is not enabled, every turn the bean is sowed from the ruma
 0: sow from last sowed position
 returns a winnable starting position
 --]]
-function generatePosition(numBins, state)
+function generatePosition(state)
   local bins = {}
   bins[0] = 100000000000000 -- just a big number to represent infinite beans in the ruma
-  for i = 1, numBins, 1 do
+  for i = 1, numBins do
     bins[i] = 0
   end
 
@@ -60,14 +67,24 @@ function generatePosition(numBins, state)
     lastSowedPosition = pos
 
     --[[
-    io.write("R ")
+    io.write('R ')
     for i = 1, 5 do
-      io.write(bins[i], " ")
+      io.write(bins[i], ' ')
     end
     io.write('\n')
     --]]
   end
 
   bins[0] = 0 -- reset ruma
+
+  -- convert to contain bin and bean objects
+  for i = 0, numBins do
+    local numBeans = bins[i]
+    bins[i] = Bin:Create(i)
+    for j = 1, numBeans do
+      table.insert(bins[i].beans, Bean:Create(bins[i].x + tileSize / 10 + math.random(4 * tileSize / 5), bins[i].y + tileSize / 10 + math.random(4 * tileSize/ 5)))
+    end
+  end
+
   return bins
 end
