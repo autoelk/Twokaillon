@@ -3,10 +3,10 @@ require 'bean'
 
 function love.load(arg)
   math.randomseed(os.time())
-  chaining = false
-  wrapping = false
+  chaining = true
+  wrapping = true
 
-  numBins = 5
+  numBins = 7
   tileSize = math.floor(math.min(love.graphics.getHeight(), love.graphics.getWidth()) / numBins)
   love.graphics.setNewFont(tileSize / 4)
 
@@ -14,7 +14,7 @@ function love.load(arg)
 end
 
 function setup()
-  bins = generatePosition(math.random(100))
+  bins = generatePosition(5)
 end
 
 function love.update(dt)
@@ -27,28 +27,21 @@ function love.draw()
   end
 end
 
---[[
-state represents in binary the choices to be made each turn
-if chaining is not enabled, every turn the bean is sowed from the ruma
-1: sow from ruma
-0: sow from last sowed position
-returns a winnable starting position
---]]
-function generatePosition(state)
+-- returns a winnable starting position
+function generatePosition(moves)
   local bins = {}
-  bins[0] = 100000000000000 -- just a big number to represent infinite beans in the ruma
-  for i = 1, numBins do
+  bins[1] = 100000000000000 -- just a big number to represent infinite beans in the ruma
+  for i = 2, numBins do
     bins[i] = 0
   end
 
-  local pos = 0
-  local lastSowedPosition = 0 -- only necessary for chaining
-  while state > 0 do
-    pos = 0
-    if chaining and bit.band(state, 1) == 1 then
+  local pos = 1
+  local lastSowedPosition = 1 -- only necessary for chaining
+  for i = 1, moves do
+    pos = 1
+    if chaining and math.random() > 0.5 and bins[lastSowedPosition] > 1 then
       pos = lastSowedPosition
     end
-    state = bit.rshift(state, 1) -- move to next position in decision tree
 
     local beansInHand = 0
     while bins[pos] > 0 do
@@ -58,7 +51,7 @@ function generatePosition(state)
       pos = pos + 1
 
       if wrapping and pos > numBins then
-        pos = 0
+        pos = 1
       end
     end
 
@@ -75,14 +68,14 @@ function generatePosition(state)
     --]]
   end
 
-  bins[0] = 0 -- reset ruma
+  bins[1] = 0 -- reset ruma
 
   -- convert to contain bin and bean objects
-  for i = 0, numBins do
+  for i = 1, numBins do
     local numBeans = bins[i]
     bins[i] = Bin:Create(i)
     for j = 1, numBeans do
-      table.insert(bins[i].beans, Bean:Create(bins[i].x + tileSize / 10 + math.random(4 * tileSize / 5), bins[i].y + tileSize / 10 + math.random(4 * tileSize/ 5)))
+      table.insert(bins[i].beans, Bean:Create(bins[i].x + tileSize / 10 + math.random(4 * tileSize / 5), bins[i].y + tileSize / 10 + math.random(4 * tileSize / 5)))
     end
   end
 
