@@ -3,8 +3,6 @@ require 'bean'
 
 function love.load(arg)
   math.randomseed(os.time())
-  chaining = true
-  wrapping = true
 
   numBins = 7
   bins = {}
@@ -15,6 +13,10 @@ function love.load(arg)
 end
 
 function setup()
+  chaining = false
+  wrapping = false
+  gameState = "player1"
+
   for i = 1, numBins do
     bins[i] = 0
   end
@@ -30,6 +32,36 @@ function love.draw()
   for i,v in ipairs(objectBins) do
     v:Draw()
   end
+
+  if gameState == "player1" or gameState == "player2" then
+    love.graphics.printf(gameState, 100, 100, love.graphics.getWidth(), "left")
+  end
+
+  if gameState == "overPlayer1" then
+    love.graphics.printf("Player 1 Wins", 0, math.floor(love.graphics.getHeight() / 3), love.graphics.getWidth(), "center")
+  elseif gameState == "overPlayer2" then
+    love.graphics.printf("Player 2 Wins", 0, math.floor(love.graphics.getHeight() / 3), love.graphics.getWidth(), "center")
+  end
+end
+
+function love.mousereleased(x, y, button)
+  if button == 1 and (gameState == "player1" or gameState == "player2")then
+    -- find correct bin
+    for i,v in ipairs(objectBins) do
+      if v.x <= x and x <= v.x + tileSize and v.y <= y and y <= v.y + tileSize then
+        if gameState == "player1" then
+          gameState = "player2"
+        elseif gameState == "player2" then
+          gameState = "player1"
+        end
+
+        if not sow(i) then
+          endGame()
+        end
+        updateView()
+      end
+    end
+  end
 end
 
 -- use model to construct a view
@@ -38,10 +70,19 @@ function updateView()
   for i,v in ipairs(bins) do
     table.insert(objectBins, Bin:Create(i));
     for j=1, v do
-      local x = objectBins[i].x + tileSize / 10 + math.random(4 * tileSize / 5)
-      local y = objectBins[i].y + tileSize / 10 + math.random(4 * tileSize / 5)
+      local x = math.floor(objectBins[i].x + tileSize / 10 + math.random(4 * tileSize / 5))
+      local y = math.floor(objectBins[i].y + tileSize / 10 + math.random(4 * tileSize / 5))
       table.insert(objectBins[i].beans, Bean:Create(x, y))
     end
+  end
+end
+
+
+function endGame()
+  if gameState == "player1" then
+    gameState = "overPlayer2"
+  elseif gameState == "player2" then
+    gameState = "overPlayer1"
   end
 end
 
@@ -89,10 +130,12 @@ function sow(pos)
     bins[pos] = bins[pos] + 1
     beansInHand = beansInHand - 1
 
-    if wrapping and bins[pos] < 0 then
+    if pos < 1 then
+      if wrapping then
       pos = #bins
-    else
-      return false
+      else
+        return false
+      end
     end
   end
 
