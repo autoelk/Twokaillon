@@ -17,11 +17,7 @@ function setup()
   wrapping = false
   gameState = "player1"
 
-  for i = 1, numBins do
-    bins[i] = 0
-  end
   bins = generatePosition(5)
-  updateView()
 end
 
 function love.update(dt)
@@ -29,8 +25,8 @@ end
 
 function love.draw()
   love.graphics.setBackgroundColor(love.math.colorFromBytes(255, 255, 255))
-  for i,v in ipairs(objectBins) do
-    v:Draw()
+  for i, v in ipairs(bins) do
+    bins[i]:Draw()
   end
 
   if gameState == "player1" or gameState == "player2" then
@@ -47,8 +43,9 @@ end
 function love.mousereleased(x, y, button)
   if button == 1 and (gameState == "player1" or gameState == "player2")then
     -- find correct bin
-    for i,v in ipairs(objectBins) do
+    for i, v in ipairs(bins) do
       if v.x <= x and x <= v.x + tileSize and v.y <= y and y <= v.y + tileSize then
+
         if gameState == "player1" then
           gameState = "player2"
         elseif gameState == "player2" then
@@ -58,21 +55,7 @@ function love.mousereleased(x, y, button)
         if not sow(i) then
           endGame()
         end
-        updateView()
       end
-    end
-  end
-end
-
--- use model to construct a view
-function updateView()
-  objectBins = {}
-  for i,v in ipairs(bins) do
-    table.insert(objectBins, Bin:Create(i));
-    for j=1, v do
-      local x = math.floor(objectBins[i].x + tileSize / 10 + math.random(4 * tileSize / 5))
-      local y = math.floor(objectBins[i].y + tileSize / 10 + math.random(4 * tileSize / 5))
-      table.insert(objectBins[i].beans, Bean:Create(x, y))
     end
   end
 end
@@ -88,28 +71,36 @@ end
 
 -- returns a winnable starting position
 function generatePosition(moves)
-  bins[1] = 100000000000000 -- just a big number to represent infinite beans in the ruma
+  for i = 1, numBins do
+    bins[i] = Bin:Create(i)
+  end
+
+  -- place a large number of beans into the ruma
+  for i = 1, 100 do 
+    table.insert(bins[1].beans, Bean:Create())
+  end
 
   local pos = 1
   local lastSowedPosition = 1 -- only necessary for chaining
   for i = 1, moves do
-    pos = 1
-    if chaining and math.random() > 0.5 and bins[lastSowedPosition] > 1 then
+    if chaining and math.random() > 0.5 and bins[lastSowedPosition].beans > 1 then
       pos = lastSowedPosition
+    else
+      pos = 1
     end
     lastSowedPosition = unsow(pos)
   end
 
-  bins[1] = 0 -- reset ruma
+  bins[1].beans = {} -- reset ruma
   return bins
 end
 
 function unsow(pos)
-  local beansInHand = 0
-  while bins[pos] > 0 do
+  local beansInHand = {}
+  while #bins[pos].beans > 0 do
     -- move bean from bin to hand, then move to next bin
-    bins[pos] = bins[pos] - 1
-    beansInHand = beansInHand + 1
+    table.insert(beansInHand, bins[pos].beans[1]) -- add first bean to hand
+    table.remove(bins[pos].beans) -- remove first bean
     pos = pos + 1
 
     if wrapping and pos > numBins then
@@ -117,31 +108,31 @@ function unsow(pos)
     end
   end
 
-  -- place all beans in first empty space encountered
-  bins[pos] = beansInHand
+  bins[pos].beans = beansInHand -- place all beans in first empty space encountered
   return pos
 end
 
 function sow(pos)
-  local beansInHand = bins[pos]
-  bins[pos] = 0
-  while beansInHand > 0 do
-    pos = pos - 1
-    bins[pos] = bins[pos] + 1
-    beansInHand = beansInHand - 1
+  local beansInHand = bins[pos].beans
+  bins[pos].beans = {}
 
+  while #beansInHand > 0 do
+    pos = pos - 1
     if pos < 1 then
       if wrapping then
-      pos = #bins
+        pos = #bins
       else
         return false
       end
     end
+
+    table.insert(bins[pos].beans, beansInHand[1]) -- add first bean from hand
+    table.remove(beansInHand) -- remove first bean from beansInHand
   end
 
   if pos == 1 then
     return true
-  elseif chaining and bins[pos] > 0 then
+  elseif chaining and #bins[pos].beans > 0 then
     return sow(pos)
   else
     return false
