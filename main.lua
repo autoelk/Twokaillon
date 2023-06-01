@@ -5,9 +5,10 @@ function love.load(arg)
   math.randomseed(os.time())
 
   numBins = 7
-  bins = {}
   tileSize = math.floor(math.min(love.graphics.getHeight(), love.graphics.getWidth()) / numBins)
   love.graphics.setNewFont(tileSize / 4)
+  hand = Bin:Create(tileSize, tileSize)
+  bins = {}
 
   setup()
 end
@@ -21,16 +22,22 @@ function setup()
 end
 
 function love.update(dt)
+  for i, v in ipairs(bins) do
+    for j, k in ipairs(v.beans) do
+      k:CalcPos()
+    end
+  end
 end
 
 function love.draw()
   love.graphics.setBackgroundColor(love.math.colorFromBytes(255, 255, 255))
+  hand:Draw()
   for i, v in ipairs(bins) do
-    bins[i]:Draw()
+    v:Draw()
   end
 
   if gameState == "player1" or gameState == "player2" then
-    love.graphics.printf(gameState, 100, 100, love.graphics.getWidth(), "left")
+    love.graphics.printf(gameState, 100, tileSize * 5, love.graphics.getWidth(), "left")
   end
 
   if gameState == "overPlayer1" then
@@ -41,7 +48,7 @@ function love.draw()
 end
 
 function love.mousereleased(x, y, button)
-  if button == 1 and (gameState == "player1" or gameState == "player2")then
+  if button == 1 and (gameState == "player1" or gameState == "player2") then
     -- find correct bin
     for i, v in ipairs(bins) do
       if v.x <= x and x <= v.x + tileSize and v.y <= y and y <= v.y + tileSize then
@@ -53,26 +60,21 @@ function love.mousereleased(x, y, button)
         end
 
         if not sow(i) then
-          endGame()
+          if gameState == "player1" then
+            gameState = "overPlayer2"
+          elseif gameState == "player2" then
+            gameState = "overPlayer1"
+          end
         end
       end
     end
   end
 end
 
-
-function endGame()
-  if gameState == "player1" then
-    gameState = "overPlayer2"
-  elseif gameState == "player2" then
-    gameState = "overPlayer1"
-  end
-end
-
 -- returns a winnable starting position
 function generatePosition(moves)
   for i = 1, numBins do
-    bins[i] = Bin:Create(i)
+    bins[i] = Bin:Create(i * tileSize, 3 * tileSize)
   end
 
   -- place a large number of beans into the ruma
@@ -95,12 +97,10 @@ function generatePosition(moves)
   return bins
 end
 
+-- unsow from given position, returns last sowed position
 function unsow(pos)
-  local beansInHand = {}
   while #bins[pos].beans > 0 do
-    -- move bean from bin to hand, then move to next bin
-    table.insert(beansInHand, bins[pos].beans[1]) -- add first bean to hand
-    table.remove(bins[pos].beans) -- remove first bean
+    bins[pos]:Move(hand)
     pos = pos + 1
 
     if wrapping and pos > numBins then
@@ -108,16 +108,18 @@ function unsow(pos)
     end
   end
 
-  bins[pos].beans = beansInHand -- place all beans in first empty space encountered
+  -- place all beans in first empty space encountered
+  hand:Move(bins[pos], #hand.beans)
   return pos
 end
 
+-- sow from given position, returns true if sow was successful
 function sow(pos)
-  local beansInHand = bins[pos].beans
-  bins[pos].beans = {}
+  bins[pos]:Move(hand, #bins[pos].beans)
 
-  while #beansInHand > 0 do
+  while #hand.beans > 0 do
     pos = pos - 1
+    
     if pos < 1 then
       if wrapping then
         pos = #bins
@@ -126,8 +128,7 @@ function sow(pos)
       end
     end
 
-    table.insert(bins[pos].beans, beansInHand[1]) -- add first bean from hand
-    table.remove(beansInHand) -- remove first bean from beansInHand
+    hand:Move(bins[pos])
   end
 
   if pos == 1 then
